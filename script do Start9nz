@@ -1,16 +1,13 @@
 -- =============================================
--- SCRIPT ST - V4.1 (FIX DELTA)
+-- SCRIPT ST - V4.3 (DELTA + MINIMIZAR + BOTÃO FLUTUANTE)
 -- =============================================
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local StarterGui = game:GetService("StarterGui")
-local Stats = game:GetService("Stats")
 
 local LocalPlayer = Players.LocalPlayer
-
--- Espera o PlayerGui carregar corretamente (IMPORTANTE pro Delta)
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui", 10)
 
 local ScreenGui = Instance.new("ScreenGui")
@@ -19,33 +16,27 @@ ScreenGui.ResetOnSpawn = false
 ScreenGui.IgnoreGuiInset = true
 ScreenGui.Parent = PlayerGui
 
--- Frame Principal
+-- ==================== MAIN HUB ====================
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 460, 0, 580)
-MainFrame.Position = UDim2.new(0.5, -230, 0.5, -290)
+MainFrame.Size = UDim2.new(0, 480, 0, 620)
+MainFrame.Position = UDim2.new(0.5, -240, 0.5, -310)
 MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 40)
 MainFrame.BorderSizePixel = 0
 MainFrame.Visible = true
 MainFrame.Parent = ScreenGui
 
 -- Draggable
-local dragging = false
-local dragInput, dragStart, startPos
-
+local dragging, dragInput, dragStart, startPos = false
 MainFrame.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
         dragging = true
         dragStart = input.Position
         startPos = MainFrame.Position
     end
 end)
-
 MainFrame.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-        dragInput = input
-    end
+    if input.UserInputType == Enum.UserInputType.MouseMovement then dragInput = input end
 end)
-
 RunService.RenderStepped:Connect(function()
     if dragging and dragInput then
         local delta = dragInput.Position - dragStart
@@ -53,9 +44,27 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- FPS + Players
+-- Rainbow Title
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1,0,0,60)
+Title.Position = UDim2.new(0,0,0,0)
+Title.BackgroundColor3 = Color3.fromRGB(0, 80, 200)
+Title.Text = "SCRIPT DO START BB - ST"
+Title.TextColor3 = Color3.new(1,1,1)
+Title.TextScaled = true
+Title.Font = Enum.Font.GothamBold
+Title.Parent = MainFrame
+
+local rainbowTick = 0
+RunService.RenderStepped:Connect(function(dt)
+    rainbowTick += dt * 2
+    Title.BackgroundColor3 = Color3.fromHSV((rainbowTick % 6)/6, 1, 1)
+end)
+
+-- FPS Bar
 local InfoBar = Instance.new("Frame")
 InfoBar.Size = UDim2.new(1,0,0,30)
+InfoBar.Position = UDim2.new(0,0,0,60)
 InfoBar.BackgroundColor3 = Color3.fromRGB(10,10,30)
 InfoBar.Parent = MainFrame
 
@@ -68,38 +77,62 @@ InfoLabel.Font = Enum.Font.Gotham
 InfoLabel.Parent = InfoBar
 
 RunService.RenderStepped:Connect(function()
-    local fps = math.floor(1 / RunService.Heartbeat:Wait())
-    InfoLabel.Text = string.format("FPS: %d | Players: %d", fps, #Players:GetPlayers())
+    local fps = math.floor(1 / RunService.Heartbeat:Wait() + 0.001)
+    InfoLabel.Text = "FPS: " .. fps .. " | Players: " .. #Players:GetPlayers()
 end)
 
--- Rainbow Title
-local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1,0,0,60)
-Title.Position = UDim2.new(0,0,0,30)
-Title.BackgroundColor3 = Color3.fromRGB(0, 80, 200)
-Title.Text = "SCRIPT DO START BB - ST"
-Title.TextColor3 = Color3.new(1,1,1)
-Title.TextScaled = true
-Title.Font = Enum.Font.GothamBold
-Title.Parent = MainFrame
+-- Close / Minimize Button
+local TopBar = Instance.new("Frame")
+TopBar.Size = UDim2.new(1,0,0,30)
+TopBar.Position = UDim2.new(0,0,0,0)
+TopBar.BackgroundTransparency = 1
+TopBar.Parent = MainFrame
 
-local rainbowTick = 0
-RunService.RenderStepped:Connect(function(dt)
-    rainbowTick = rainbowTick + dt * 1.5
-    Title.BackgroundColor3 = Color3.fromHSV((rainbowTick % 6)/6, 1, 1)
-end)
+local MinimizeBtn = Instance.new("TextButton")
+MinimizeBtn.Size = UDim2.new(0, 80, 0, 30)
+MinimizeBtn.Position = UDim2.new(1, -170, 0, 0)
+MinimizeBtn.BackgroundColor3 = Color3.fromRGB(255, 140, 0)
+MinimizeBtn.Text = "Minimizar"
+MinimizeBtn.TextColor3 = Color3.new(1,1,1)
+MinimizeBtn.TextScaled = true
+MinimizeBtn.Parent = TopBar
 
--- Close Button
 local CloseBtn = Instance.new("TextButton")
-CloseBtn.Size = UDim2.new(0,40,0,30)
-CloseBtn.Position = UDim2.new(1,-45,0,5)
+CloseBtn.Size = UDim2.new(0, 40, 0, 30)
+CloseBtn.Position = UDim2.new(1, -45, 0, 0)
 CloseBtn.BackgroundColor3 = Color3.fromRGB(200,50,50)
 CloseBtn.Text = "X"
 CloseBtn.TextColor3 = Color3.new(1,1,1)
 CloseBtn.TextScaled = true
-CloseBtn.Parent = MainFrame
-CloseBtn.MouseButton1Click:Connect(function()
+CloseBtn.Parent = TopBar
+
+-- ==================== BOTÃO FLUTUANTE ====================
+local FloatButton = Instance.new("TextButton")
+FloatButton.Size = UDim2.new(0, 70, 0, 70)
+FloatButton.Position = UDim2.new(0, 20, 0.5, -35)
+FloatButton.BackgroundColor3 = Color3.fromRGB(0, 120, 255)
+FloatButton.Text = "ST"
+FloatButton.TextColor3 = Color3.new(1,1,1)
+FloatButton.TextScaled = true
+FloatButton.Font = Enum.Font.GothamBold
+FloatButton.Parent = ScreenGui
+
+-- Arredondado
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0.5, 0)
+corner.Parent = FloatButton
+
+FloatButton.MouseButton1Click:Connect(function()
+    MainFrame.Visible = not MainFrame.Visible
+end)
+
+-- ==================== FUNCIONALIDADES ====================
+MinimizeBtn.MouseButton1Click:Connect(function()
     MainFrame.Visible = false
+end)
+
+CloseBtn.MouseButton1Click:Connect(function()
+    ScreenGui:Destroy()
 end)
 
 -- Reabrir com F4
@@ -109,11 +142,10 @@ UserInputService.InputBegan:Connect(function(input, gp)
     end
 end)
 
--- Notificação de sucesso
 StarterGui:SetCore("SendNotification", {
-    Title = "ST V4.1",
-    Text = "Hub carregada! Pressione F4 se fechar",
-    Duration = 6
+    Title = "ST V4.3",
+    Text = "Hub carregada!\nBotão flutuante ativado",
+    Duration = 8
 })
 
-print("✅ ST V4.1 carregada com sucesso no Delta!")
+print("ST V4.3 carregada com sucesso!")
