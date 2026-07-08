@@ -1,14 +1,15 @@
 -- =============================================
--- SCRIPT ST - V4.3 (DELTA + MINIMIZAR + BOTÃO FLUTUANTE)
+-- SCRIPT ST V4.6 - GRAVAÇÕES PERMANENTES
 -- =============================================
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local StarterGui = game:GetService("StarterGui")
+local HttpService = game:GetService("HttpService")
 
 local LocalPlayer = Players.LocalPlayer
-local PlayerGui = LocalPlayer:WaitForChild("PlayerGui", 10)
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "ST_Hub"
@@ -16,17 +17,16 @@ ScreenGui.ResetOnSpawn = false
 ScreenGui.IgnoreGuiInset = true
 ScreenGui.Parent = PlayerGui
 
--- ==================== MAIN HUB ====================
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 480, 0, 620)
-MainFrame.Position = UDim2.new(0.5, -240, 0.5, -310)
+MainFrame.Size = UDim2.new(0, 520, 0, 620)
+MainFrame.Position = UDim2.new(0.5, -260, 0.5, -310)
 MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 40)
 MainFrame.BorderSizePixel = 0
-MainFrame.Visible = true
 MainFrame.Parent = ScreenGui
 
--- Draggable
-local dragging, dragInput, dragStart, startPos = false
+-- Draggable e Rainbow Title (mantido)
+local dragging = false
+local dragStart, startPos
 MainFrame.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 then
         dragging = true
@@ -35,19 +35,17 @@ MainFrame.InputBegan:Connect(function(input)
     end
 end)
 MainFrame.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement then dragInput = input end
-end)
-RunService.RenderStepped:Connect(function()
-    if dragging and dragInput then
-        local delta = dragInput.Position - dragStart
+    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+        local delta = input.Position - dragStart
         MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
     end
 end)
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
+end)
 
--- Rainbow Title
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1,0,0,60)
-Title.Position = UDim2.new(0,0,0,0)
 Title.BackgroundColor3 = Color3.fromRGB(0, 80, 200)
 Title.Text = "SCRIPT DO START BB - ST"
 Title.TextColor3 = Color3.new(1,1,1)
@@ -57,58 +55,61 @@ Title.Parent = MainFrame
 
 local rainbowTick = 0
 RunService.RenderStepped:Connect(function(dt)
-    rainbowTick += dt * 2
+    rainbowTick += dt * 1.5
     Title.BackgroundColor3 = Color3.fromHSV((rainbowTick % 6)/6, 1, 1)
 end)
 
--- FPS Bar
-local InfoBar = Instance.new("Frame")
-InfoBar.Size = UDim2.new(1,0,0,30)
-InfoBar.Position = UDim2.new(0,0,0,60)
-InfoBar.BackgroundColor3 = Color3.fromRGB(10,10,30)
-InfoBar.Parent = MainFrame
+-- Tabs
+local TabFrame = Instance.new("Frame")
+TabFrame.Size = UDim2.new(1,0,0,50)
+TabFrame.Position = UDim2.new(0,0,0,60)
+TabFrame.BackgroundColor3 = Color3.fromRGB(15,15,35)
+TabFrame.Parent = MainFrame
 
-local InfoLabel = Instance.new("TextLabel")
-InfoLabel.Size = UDim2.new(1,0,1,0)
-InfoLabel.BackgroundTransparency = 1
-InfoLabel.TextColor3 = Color3.new(1,1,1)
-InfoLabel.TextScaled = true
-InfoLabel.Font = Enum.Font.Gotham
-InfoLabel.Parent = InfoBar
+local TabContainer = Instance.new("Frame")
+TabContainer.Size = UDim2.new(1,0,1,0)
+TabContainer.Position = UDim2.new(0,0,0,110)
+TabContainer.BackgroundTransparency = 1
+TabContainer.Parent = MainFrame
 
-RunService.RenderStepped:Connect(function()
-    local fps = math.floor(1 / RunService.Heartbeat:Wait() + 0.001)
-    InfoLabel.Text = "FPS: " .. fps .. " | Players: " .. #Players:GetPlayers()
-end)
+local function CreateTab(name)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0, 170, 1, 0)
+    btn.BackgroundColor3 = Color3.fromRGB(30,30,60)
+    btn.Text = name
+    btn.TextColor3 = Color3.new(1,1,1)
+    btn.TextScaled = true
+    btn.Parent = TabFrame
 
--- Close / Minimize Button
-local TopBar = Instance.new("Frame")
-TopBar.Size = UDim2.new(1,0,0,30)
-TopBar.Position = UDim2.new(0,0,0,0)
-TopBar.BackgroundTransparency = 1
-TopBar.Parent = MainFrame
+    local page = Instance.new("ScrollingFrame")
+    page.Size = UDim2.new(1,0,1,0)
+    page.BackgroundTransparency = 1
+    page.ScrollBarThickness = 6
+    page.Visible = false
+    page.Parent = TabContainer
 
-local MinimizeBtn = Instance.new("TextButton")
-MinimizeBtn.Size = UDim2.new(0, 80, 0, 30)
-MinimizeBtn.Position = UDim2.new(1, -170, 0, 0)
-MinimizeBtn.BackgroundColor3 = Color3.fromRGB(255, 140, 0)
-MinimizeBtn.Text = "Minimizar"
-MinimizeBtn.TextColor3 = Color3.new(1,1,1)
-MinimizeBtn.TextScaled = true
-MinimizeBtn.Parent = TopBar
+    local layout = Instance.new("UIListLayout")
+    layout.Padding = UDim.new(0, 8)
+    layout.SortOrder = Enum.SortOrder.LayoutOrder
+    layout.Parent = page
 
-local CloseBtn = Instance.new("TextButton")
-CloseBtn.Size = UDim2.new(0, 40, 0, 30)
-CloseBtn.Position = UDim2.new(1, -45, 0, 0)
-CloseBtn.BackgroundColor3 = Color3.fromRGB(200,50,50)
-CloseBtn.Text = "X"
-CloseBtn.TextColor3 = Color3.new(1,1,1)
-CloseBtn.TextScaled = true
-CloseBtn.Parent = TopBar
+    btn.MouseButton1Click:Connect(function()
+        for _, v in pairs(TabContainer:GetChildren()) do
+            if v:IsA("ScrollingFrame") then v.Visible = false end
+        end
+        page.Visible = true
+    end)
+    return page
+end
 
--- ==================== BOTÃO FLUTUANTE ====================
+local TabMain = CreateTab("Principal")
+local TabXitos = CreateTab("XITOS DELTA")
+local TabRecord = CreateTab("Gravações")
+local TabCreditos = CreateTab("Criadores")
+
+-- Botão Flutuante
 local FloatButton = Instance.new("TextButton")
-FloatButton.Size = UDim2.new(0, 70, 0, 70)
+FloatButton.Size = UDim2.new(0, 65, 0, 65)
 FloatButton.Position = UDim2.new(0, 20, 0.5, -35)
 FloatButton.BackgroundColor3 = Color3.fromRGB(0, 120, 255)
 FloatButton.Text = "ST"
@@ -117,35 +118,192 @@ FloatButton.TextScaled = true
 FloatButton.Font = Enum.Font.GothamBold
 FloatButton.Parent = ScreenGui
 
--- Arredondado
-local corner = Instance.new("UICorner")
-corner.CornerRadius = UDim.new(0.5, 0)
-corner.Parent = FloatButton
+Instance.new("UICorner", FloatButton).CornerRadius = UDim.new(0.5, 0)
 
 FloatButton.MouseButton1Click:Connect(function()
     MainFrame.Visible = not MainFrame.Visible
 end)
 
--- ==================== FUNCIONALIDADES ====================
-MinimizeBtn.MouseButton1Click:Connect(function()
-    MainFrame.Visible = false
-end)
+-- ==================== GRAVAÇÕES PERMANENTES ====================
+local SaveFolder = "ST_Recordings"
+if not isfolder(SaveFolder) then
+    makefolder(SaveFolder)
+end
 
-CloseBtn.MouseButton1Click:Connect(function()
-    ScreenGui:Destroy()
-end)
+local Recording = false
+local RecordedMoves = {}
+local RecordingConnection = nil
 
--- Reabrir com F4
-UserInputService.InputBegan:Connect(function(input, gp)
-    if not gp and input.KeyCode == Enum.KeyCode.F4 then
-        MainFrame.Visible = true
+local function RefreshRecordingsList(page)
+    -- Limpa lista anterior
+    for _, child in pairs(page:GetChildren()) do
+        if child:IsA("Frame") then child:Destroy() end
     end
+
+    local files = listfiles(SaveFolder)
+    for _, filePath in ipairs(files) do
+        local filename = filePath:match("([^\\]+)$")
+
+        local frame = Instance.new("Frame")
+        frame.Size = UDim2.new(0.95, 0, 0, 90)
+        frame.BackgroundColor3 = Color3.fromRGB(35, 35, 65)
+        frame.Parent = page
+
+        local label = Instance.new("TextLabel")
+        label.Size = UDim2.new(1,0,0.4,0)
+        label.BackgroundTransparency = 1
+        label.Text = "📼 " .. filename
+        label.TextColor3 = Color3.new(1,1,1)
+        label.TextScaled = true
+        label.Parent = frame
+
+        -- Reproduzir
+        local play = Instance.new("TextButton")
+        play.Size = UDim2.new(0.45,0,0.25,0)
+        play.Position = UDim2.new(0.05,0,0.45,0)
+        play.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
+        play.Text = "▶ Reproduzir"
+        play.TextColor3 = Color3.new(1,1,1)
+        play.Parent = frame
+        play.MouseButton1Click:Connect(function()
+            local data = readfile(filePath)
+            local moves = HttpService:JSONDecode(data)
+            PlayRecording(moves, filename)
+        end)
+
+        -- Renomear
+        local rename = Instance.new("TextButton")
+        rename.Size = UDim2.new(0.45,0,0.25,0)
+        rename.Position = UDim2.new(0.5,0,0.45,0)
+        rename.BackgroundColor3 = Color3.fromRGB(255, 165, 0)
+        rename.Text = "✏ Renomear"
+        rename.TextColor3 = Color3.new(1,1,1)
+        rename.Parent = frame
+        rename.MouseButton1Click:Connect(function()
+            local newName = "parkour_" .. os.date("%Y%m%d_%H%M%S")
+            -- Simples rename
+            pcall(function()
+                writefile(SaveFolder .. "/" .. newName .. ".json", readfile(filePath))
+                delfile(filePath)
+            end)
+            RefreshRecordingsList(page)
+        end)
+
+        -- Apagar
+        local del = Instance.new("TextButton")
+        del.Size = UDim2.new(0.45,0,0.25,0)
+        del.Position = UDim2.new(0.05,0,0.75,0)
+        del.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+        del.Text = "🗑 Apagar"
+        del.TextColor3 = Color3.new(1,1,1)
+        del.Parent = frame
+        del.MouseButton1Click:Connect(function()
+            pcall(function() delfile(filePath) end)
+            RefreshRecordingsList(page)
+        end)
+    end
+end
+
+local function StartRecording()
+    if Recording then return end
+    Recording = true
+    RecordedMoves = {}
+    StarterGui:SetCore("SendNotification", {Title = "ST", Text = "Gravação INICIADA", Duration = 4})
+
+    RecordingConnection = RunService.Heartbeat:Connect(function()
+        pcall(function()
+            local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if root then
+                table.insert(RecordedMoves, {
+                    t = tick(),
+                    c = root.CFrame,
+                    v = root.Velocity,
+                    j = LocalPlayer.Character.Humanoid.Jump
+                })
+            end
+        end)
+    end)
+end
+
+local function StopRecording(page)
+    if not Recording then return end
+    Recording = false
+    if RecordingConnection then RecordingConnection:Disconnect() end
+
+    if #RecordedMoves > 10 then
+        local name = "parkour_" .. os.date("%Y%m%d_%H%M%S")
+        writefile(SaveFolder .. "/" .. name .. ".json", HttpService:JSONEncode(RecordedMoves))
+        StarterGui:SetCore("SendNotification", {Title = "ST", Text = "Gravação salva: " .. name, Duration = 6})
+    else
+        StarterGui:SetCore("SendNotification", {Title = "ST", Text = "Gravação muito curta!", Duration = 4})
+    end
+    RefreshRecordingsList(page)
+end
+
+local function PlayRecording(moves, name)
+    StarterGui:SetCore("SendNotification", {Title = "ST", Text = "Reproduzindo: " .. name, Duration = 4})
+    local startTime = tick()
+    local index = 1
+
+    local conn
+    conn = RunService.Heartbeat:Connect(function()
+        if index > #moves then conn:Disconnect() return end
+        local move = moves[index]
+        if tick() - startTime >= (move.t - moves[1].t) then
+            pcall(function()
+                if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                    LocalPlayer.Character.HumanoidRootPart.CFrame = move.c
+                    LocalPlayer.Character.HumanoidRootPart.Velocity = move.v or Vector3.new()
+                    if move.j then LocalPlayer.Character.Humanoid.Jump = true end
+                end
+            end)
+            index += 1
+        end
+    end)
+end
+
+-- ==================== PREENCHER ABAS ====================
+local RecordPage = TabRecord
+
+-- Botões de Gravação
+local startBtn = Instance.new("TextButton")
+startBtn.Size = UDim2.new(0.9,0,0,65)
+startBtn.BackgroundColor3 = Color3.fromRGB(0,180,0)
+startBtn.Text = "▶ INICIAR GRAVAÇÃO"
+startBtn.TextScaled = true
+startBtn.Parent = RecordPage
+startBtn.MouseButton1Click:Connect(StartRecording)
+
+local stopBtn = Instance.new("TextButton")
+stopBtn.Size = UDim2.new(0.9,0,0,65)
+stopBtn.BackgroundColor3 = Color3.fromRGB(200,0,0)
+stopBtn.Text = "⏹ PARAR E SALVAR GRAVAÇÃO"
+stopBtn.TextScaled = true
+stopBtn.Parent = RecordPage
+stopBtn.MouseButton1Click:Connect(function() StopRecording(RecordPage) end)
+
+-- Carrega gravações salvas ao abrir
+RefreshRecordingsList(RecordPage)
+
+-- Outras abas (resumido)
+local function AddBtn(parent, text, color, callback)
+    local b = Instance.new("TextButton")
+    b.Size = UDim2.new(0.95,0,0,55)
+    b.BackgroundColor3 = color or Color3.fromRGB(40,40,80)
+    b.Text = text
+    b.TextScaled = true
+    b.TextColor3 = Color3.new(1,1,1)
+    b.Parent = parent
+    b.MouseButton1Click:Connect(callback)
+end
+
+AddBtn(TabMain, "🔧 Carregar F3X", Color3.fromRGB(0,100,255), function()
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/CMD-X/F3X/main/F3X.lua"))()
 end)
 
-StarterGui:SetCore("SendNotification", {
-    Title = "ST V4.3",
-    Text = "Hub carregada!\nBotão flutuante ativado",
-    Duration = 8
-})
+AddBtn(TabMain, "🚶 Toggle NoClip", nil, ToggleNoclip)
+AddBtn(TabMain, "🟩 Textura Minecraft", nil, ApplyMinecraft)
+AddBtn(TabXitos, "🎯 ESP Rainbow", nil, ToggleESP)
 
-print("ST V4.3 carregada com sucesso!")
+StarterGui:SetCore("SendNotification", {Title = "ST V4.6", Text = "Gravações permanentes ativadas!", Duration = 8})
+print("ST V4.6 - Gravações salvas permanentemente!")
