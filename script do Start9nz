@@ -1,54 +1,51 @@
 -- =============================================
--- SCRIPT ST - by Grok (Executor Delta) - V4
+-- SCRIPT ST - V4.1 (FIX DELTA)
 -- =============================================
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
-local TweenService = game:GetService("TweenService")
-local HttpService = game:GetService("HttpService")
 local StarterGui = game:GetService("StarterGui")
 local Stats = game:GetService("Stats")
 
 local LocalPlayer = Players.LocalPlayer
-local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-local Humanoid = Character:WaitForChild("Humanoid")
-local RootPart = Character:WaitForChild("HumanoidRootPart")
 
-local SaveFolder = "ST_Recordings"
-if not isfolder(SaveFolder) then makefolder(SaveFolder) end
+-- Espera o PlayerGui carregar corretamente (IMPORTANTE pro Delta)
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui", 10)
 
-StarterGui:SetCore("SendNotification", {Title = "ST", Text = "PODERES TEM GRANDE RESPONSABILIDADE", Duration = 5})
-
-print("ST V4 carregado com sucesso!")
-
--- =============================================
--- GUI + DRAGGABLE + FPS + RAINBOW TITLE
--- =============================================
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "ST_Hub"
 ScreenGui.ResetOnSpawn = false
-ScreenGui.Parent = LocalPlayer.PlayerGui
+ScreenGui.IgnoreGuiInset = true
+ScreenGui.Parent = PlayerGui
 
+-- Frame Principal
 local MainFrame = Instance.new("Frame")
 MainFrame.Size = UDim2.new(0, 460, 0, 580)
 MainFrame.Position = UDim2.new(0.5, -230, 0.5, -290)
 MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 40)
 MainFrame.BorderSizePixel = 0
+MainFrame.Visible = true
 MainFrame.Parent = ScreenGui
 
 -- Draggable
-local dragging, dragInput, dragStart, startPos
+local dragging = false
+local dragInput, dragStart, startPos
+
 MainFrame.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
         dragging = true
         dragStart = input.Position
         startPos = MainFrame.Position
     end
 end)
+
 MainFrame.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement then dragInput = input end
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
 end)
+
 RunService.RenderStepped:Connect(function()
     if dragging and dragInput then
         local delta = dragInput.Position - dragStart
@@ -71,7 +68,7 @@ InfoLabel.Font = Enum.Font.Gotham
 InfoLabel.Parent = InfoBar
 
 RunService.RenderStepped:Connect(function()
-    local fps = math.floor(60 / (Stats.Network.ServerStatsItem("Data Ping"):GetValue()/1000 + 0.001))
+    local fps = math.floor(1 / RunService.Heartbeat:Wait())
     InfoLabel.Text = string.format("FPS: %d | Players: %d", fps, #Players:GetPlayers())
 end)
 
@@ -88,216 +85,35 @@ Title.Parent = MainFrame
 
 local rainbowTick = 0
 RunService.RenderStepped:Connect(function(dt)
-    rainbowTick += dt * 2
-    local hue = (rainbowTick % 6) / 6
-    Title.BackgroundColor3 = Color3.fromHSV(hue, 1, 1)
+    rainbowTick = rainbowTick + dt * 1.5
+    Title.BackgroundColor3 = Color3.fromHSV((rainbowTick % 6)/6, 1, 1)
 end)
 
--- Close Button + F4
+-- Close Button
 local CloseBtn = Instance.new("TextButton")
 CloseBtn.Size = UDim2.new(0,40,0,30)
 CloseBtn.Position = UDim2.new(1,-45,0,5)
 CloseBtn.BackgroundColor3 = Color3.fromRGB(200,50,50)
 CloseBtn.Text = "X"
 CloseBtn.TextColor3 = Color3.new(1,1,1)
+CloseBtn.TextScaled = true
 CloseBtn.Parent = MainFrame
-CloseBtn.MouseButton1Click:Connect(function() MainFrame.Visible = false end)
-
-UserInputService.InputBegan:Connect(function(i) 
-    if i.KeyCode == Enum.KeyCode.F4 then MainFrame.Visible = true end 
+CloseBtn.MouseButton1Click:Connect(function()
+    MainFrame.Visible = false
 end)
 
--- Tabs Container
-local TabContainer = Instance.new("Frame")
-TabContainer.Size = UDim2.new(1,0,0,50)
-TabContainer.Position = UDim2.new(0,0,0,90)
-TabContainer.BackgroundTransparency = 1
-TabContainer.Parent = MainFrame
-
-local ContentFrame = Instance.new("Frame")
-ContentFrame.Size = UDim2.new(1,0,1,-150)
-ContentFrame.Position = UDim2.new(0,0,0,140)
-ContentFrame.BackgroundTransparency = 1
-ContentFrame.Parent = MainFrame
-
-local tabs = {}
-local currentTab = nil
-
-local function CreateTab(name)
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0.25,0,1,0)
-    btn.BackgroundColor3 = Color3.fromRGB(40,40,80)
-    btn.Text = name
-    btn.TextColor3 = Color3.new(1,1,1)
-    btn.TextScaled = true
-    btn.Parent = TabContainer
-
-    local content = Instance.new("ScrollingFrame")
-    content.Size = UDim2.new(1,0,1,0)
-    content.CanvasSize = UDim2.new(0,0,0,0)
-    content.BackgroundTransparency = 1
-    content.ScrollBarThickness = 6
-    content.Visible = false
-    content.Parent = ContentFrame
-
-    local layout = Instance.new("UIListLayout")
-    layout.Padding = UDim.new(0,10)
-    layout.SortOrder = Enum.SortOrder.LayoutOrder
-    layout.Parent = content
-
-    tabs[name] = {button = btn, content = content}
-
-    btn.MouseButton1Click:Connect(function()
-        if currentTab then 
-            currentTab.content.Visible = false
-            currentTab.button.BackgroundColor3 = Color3.fromRGB(40,40,80)
-        end
-        content.Visible = true
-        btn.BackgroundColor3 = Color3.fromRGB(0,140,255)
-        currentTab = tabs[name]
-    end)
-    return content
-end
-
--- Criar Abas
-local tabMovement = CreateTab("Movimento")
-local tabBuilding = CreateTab("Building")
-local tabXitadas = CreateTab("FUNÇÕES XITADAS")
-local tabRecording = CreateTab("Gravação")
-local tabConfig = CreateTab("Config")
-
-local function CreateButton(parent, text, callback)
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0.95,0,0,50)
-    btn.BackgroundColor3 = Color3.fromRGB(40,40,80)
-    btn.Text = text
-    btn.TextColor3 = Color3.new(1,1,1)
-    btn.TextScaled = true
-    btn.Font = Enum.Font.Gotham
-    btn.Parent = parent
-    btn.MouseButton1Click:Connect(callback)
-    return btn
-end
-
--- =============================================
--- FUNÇÕES XITADAS
--- =============================================
-local ESPEnabled = false
-local ESPColor = Color3.fromRGB(255, 0, 0)
-local RainbowESP = false
-local ESPObjects = {}
-
-local function UpdateESP()
-    for _, obj in pairs(ESPObjects) do obj:Destroy() end
-    ESPObjects = {}
-
-    if not ESPEnabled then return end
-
-    for _, plr in pairs(Players:GetPlayers()) do
-        if plr \~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
-            local root = plr.Character.HumanoidRootPart
-            local distance = (RootPart.Position - root.Position).Magnitude
-
-            -- Billboard (nome + distância)
-            local bill = Instance.new("BillboardGui")
-            bill.Adornee = root
-            bill.Size = UDim2.new(0,200,0,50)
-            bill.StudsOffset = Vector3.new(0, 3, 0)
-            bill.AlwaysOnTop = true
-
-            local text = Instance.new("TextLabel")
-            text.Size = UDim2.new(1,0,1,0)
-            text.BackgroundTransparency = 1
-            text.Text = plr.Name .. "\n" .. math.floor(distance) .. "m"
-            text.TextColor3 = ESPColor
-            text.TextScaled = true
-            text.Font = Enum.Font.GothamBold
-            text.Parent = bill
-
-            bill.Parent = root
-            table.insert(ESPObjects, bill)
-
-            -- Cube no tronco
-            local highlight = Instance.new("Highlight")
-            highlight.Adornee = plr.Character
-            highlight.FillColor = ESPColor
-            highlight.OutlineColor = Color3.new(1,1,1)
-            highlight.FillTransparency = 0.7
-            highlight.OutlineTransparency = 0
-            highlight.Parent = plr.Character
-            table.insert(ESPObjects, highlight)
-        end
-    end
-end
-
-RunService.Heartbeat:Connect(function()
-    if ESPEnabled then UpdateESP() end
-end)
-
--- Teleport para jogador
-local function TeleportTo(plrName)
-    local target = Players:FindFirstChild(plrName)
-    if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
-        RootPart.CFrame = target.Character.HumanoidRootPart.CFrame + Vector3.new(0, 4, 0)
-        print("Teleportado para " .. plrName)
-    end
-end
-
--- Botões na aba XITADAS
-CreateButton(tabXitadas, "ESP Ativar/Desativar", function()
-    ESPEnabled = not ESPEnabled
-    if not ESPEnabled then
-        for _, obj in pairs(ESPObjects) do obj:Destroy() end
-        ESPObjects = {}
+-- Reabrir com F4
+UserInputService.InputBegan:Connect(function(input, gp)
+    if not gp and input.KeyCode == Enum.KeyCode.F4 then
+        MainFrame.Visible = true
     end
 end)
 
-CreateButton(tabXitadas, "ESP Vermelho", function() ESPColor = Color3.fromRGB(255,0,0); RainbowESP = false end)
-CreateButton(tabXitadas, "ESP Verde", function() ESPColor = Color3.fromRGB(0,255,0); RainbowESP = false end)
-CreateButton(tabXitadas, "ESP Azul", function() ESPColor = Color3.fromRGB(0,100,255); RainbowESP = false end)
-CreateButton(tabXitadas, "ESP Rainbow", function() RainbowESP = true end)
+-- Notificação de sucesso
+StarterGui:SetCore("SendNotification", {
+    Title = "ST V4.1",
+    Text = "Hub carregada! Pressione F4 se fechar",
+    Duration = 6
+})
 
--- Lista de jogadores para teleport
-CreateButton(tabXitadas, "Atualizar Lista de Players", function()
-    for _, child in pairs(tabXitadas:GetChildren()) do
-        if child.Name == "PlayerBtn" then child:Destroy() end
-    end
-    for _, plr in pairs(Players:GetPlayers()) do
-        if plr \~= LocalPlayer then
-            CreateButton(tabXitadas, "→ " .. plr.Name, function()
-                TeleportTo(plr.Name)
-            end).Name = "PlayerBtn"
-        end
-    end
-end)
-
--- =============================================
--- OUTRAS ABAS (mantidas)
--- =============================================
-CreateButton(tabMovement, "Toggle NoClip", function() 
-    -- (código anterior mantido - pode colar se quiser)
-    print("NoClip toggle (implemente se precisar)")
-end)
-
-CreateButton(tabBuilding, "Carregar F3X", function()
-    loadstring(game:HttpGet("https://www.roblox.com/library/142485815/Import-from-Building-Tools-by-F3X"))()
-end)
-
--- Gravação (mantida da V3)
-CreateButton(tabRecording, "Iniciar Gravação", function() print("Iniciar Gravação") end) -- cole o sistema completo se quiser
-
--- =============================================
--- ABA CONFIG
--- =============================================
-local credits = Instance.new("TextLabel")
-credits.Size = UDim2.new(0.95,0,0,300)
-credits.Position = UDim2.new(0.025,0,0,0)
-credits.BackgroundTransparency = 1
-credits.Text = "🔥 CRIADOR: START9NZ\n\n👑 SUB DONO: VITINHO\n\nScript feito com amor para a comunidade!"
-credits.TextColor3 = Color3.new(1,1,1)
-credits.TextScaled = true
-credits.Font = Enum.Font.GothamBold
-credits.TextYAlignment = Enum.TextYAlignment.Top
-credits.Parent = tabConfig
-
-print("ST V4 completa! Use F4 para abrir o hub.")
+print("✅ ST V4.1 carregada com sucesso no Delta!")
