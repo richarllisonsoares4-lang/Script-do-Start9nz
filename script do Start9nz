@@ -1,0 +1,240 @@
+-- =============================================
+-- SCRIPT ST - by Grok (Executor Delta)
+-- Título: SCRIPT DO START BB
+-- Ícone: Azul - Nome: ST
+-- =============================================
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local HttpService = game:GetService("HttpService")
+local StarterGui = game:GetService("StarterGui")
+
+local LocalPlayer = Players.LocalPlayer
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local Humanoid = Character:WaitForChild("Humanoid")
+
+-- Configurações
+local ScriptName = "ST"
+local SaveFolder = "ST_Recordings"
+
+-- Criar pasta de saves
+if not isfolder(SaveFolder) then
+    makefolder(SaveFolder)
+end
+
+-- Mensagem inicial
+StarterGui:SetCore("SendNotification", {
+    Title = "ST",
+    Text = "PODERES TEM GRANDE RESPONSABILIDADE",
+    Duration = 5,
+    Icon = "rbxassetid://357249130" -- Ícone azul genérico
+})
+
+print("ST carregado com sucesso!")
+
+-- =============================================
+-- GUI PRINCIPAL
+-- =============================================
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "ST_Hub"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 350, 0, 500)
+MainFrame.Position = UDim2.new(0.5, -175, 0.5, -250)
+MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 40)
+MainFrame.BorderSizePixel = 0
+MainFrame.Parent = ScreenGui
+
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, 0, 0, 50)
+Title.BackgroundColor3 = Color3.fromRGB(0, 100, 255) -- Azul
+Title.Text = "SCRIPT DO START BB - ST"
+Title.TextColor3 = Color3.new(1,1,1)
+Title.TextScaled = true
+Title.Parent = MainFrame
+
+-- Função para criar botões
+local function CreateButton(parent, text, yOffset, callback)
+    local Btn = Instance.new("TextButton")
+    Btn.Size = UDim2.new(0.9, 0, 0, 50)
+    Btn.Position = UDim2.new(0.05, 0, 0, yOffset)
+    Btn.BackgroundColor3 = Color3.fromRGB(40, 40, 80)
+    Btn.Text = text
+    Btn.TextColor3 = Color3.new(1,1,1)
+    Btn.TextScaled = true
+    Btn.Parent = parent
+    Btn.MouseButton1Click:Connect(callback)
+    return Btn
+end
+
+-- =============================================
+-- CARREGAR F3X BUILDING TOOLS
+-- =============================================
+CreateButton(MainFrame, "Carregar F3X Building Tools", 60, function()
+    loadstring(game:HttpGet("https://www.roblox.com/library/142485815/Import-from-Building-Tools-by-F3X"))()
+    print("F3X carregado!")
+end)
+
+-- =============================================
+-- NOCLIP
+-- =============================================
+local NoclipEnabled = false
+local NoclipConnection
+
+local function ToggleNoclip()
+    NoclipEnabled = not NoclipEnabled
+    if NoclipEnabled then
+        NoclipConnection = RunService.Stepped:Connect(function()
+            if Character and Character:FindFirstChild("HumanoidRootPart") then
+                for _, part in pairs(Character:GetDescendants()) do
+                    if part:IsA("BasePart") and part.CanCollide then
+                        part.CanCollide = false
+                    end
+                end
+            end
+        end)
+    else
+        if NoclipConnection then NoclipConnection:Disconnect() end
+    end
+    print("NoClip: " .. (NoclipEnabled and "ATIVADO" or "DESATIVADO"))
+end
+
+CreateButton(MainFrame, "Toggle NoClip", 120, ToggleNoclip)
+
+-- =============================================
+-- TEXTURA MINECRAFT (Performance)
+-- =============================================
+local MinecraftMode = false
+
+local function ApplyMinecraftTextures()
+    for _, obj in pairs(workspace:GetDescendants()) do
+        if obj:IsA("BasePart") or obj:IsA("MeshPart") or obj:IsA("Texture") then
+            if obj:IsA("BasePart") or obj:IsA("MeshPart") then
+                obj.Material = Enum.Material.Grass -- ou Fabric, etc.
+                obj.Color = Color3.fromRGB(100, 200, 50) -- Verde pixelado
+            end
+            if obj:IsA("Texture") then
+                obj.Texture = "rbxassetid://0" -- Remove texturas pesadas
+            end
+        end
+    end
+    settings().Rendering.QualityLevel = 1 -- Baixa qualidade
+    print("Modo Textura Minecraft ativado (jogo mais leve)")
+end
+
+local function RestoreNormal()
+    -- Reset básico (não restaura tudo perfeitamente)
+    settings().Rendering.QualityLevel = 10
+    print("Modo normal restaurado")
+end
+
+CreateButton(MainFrame, "Textura Minecraft", 180, function()
+    MinecraftMode = not MinecraftMode
+    if MinecraftMode then
+        ApplyMinecraftTextures()
+    else
+        RestoreNormal()
+    end
+end)
+
+-- =============================================
+-- SISTEMA DE GRAVAÇÃO DE PARKOUR
+-- =============================================
+local Recording = false
+local RecordedMoves = {}
+local RecordingConnection
+local CurrentRecordingName = ""
+
+local function StartRecording()
+    if Recording then return end
+    Recording = true
+    RecordedMoves = {}
+    print("Gravação INICIADA - Faça seu parkour!")
+    
+    RecordingConnection = RunService.Heartbeat:Connect(function(dt)
+        if Character and Character:FindFirstChild("HumanoidRootPart") then
+            table.insert(RecordedMoves, {
+                Time = tick(),
+                CFrame = Character.HumanoidRootPart.CFrame,
+                Velocity = Character.HumanoidRootPart.Velocity,
+                Jump = Humanoid.Jump
+            })
+        end
+    end)
+end
+
+local function StopRecording()
+    if not Recording then return end
+    Recording = false
+    if RecordingConnection then RecordingConnection:Disconnect() end
+    
+    -- Pedir nome
+    local name = "recording_" .. os.date("%Y%m%d_%H%M%S")
+    name = syn.request or HttpService:GenerateGUID(false) -- fallback
+    
+    -- Salvar
+    local success, err = pcall(function()
+        writefile(SaveFolder .. "/" .. name .. ".json", HttpService:JSONEncode(RecordedMoves))
+    end)
+    
+    if success then
+        print("Gravação salva como: " .. name)
+        StarterGui:SetCore("SendNotification", {Title = "ST", Text = "Gravação salva: " .. name, Duration = 4})
+    else
+        print("Erro ao salvar: " .. tostring(err))
+    end
+end
+
+local function PlayRecording(filename)
+    local data = readfile(SaveFolder .. "/" .. filename)
+    local moves = HttpService:JSONDecode(data)
+    
+    print("Reproduzindo: " .. filename)
+    
+    local startTime = tick()
+    local index = 1
+    
+    local playConn
+    playConn = RunService.Heartbeat:Connect(function()
+        if index > #moves then
+            playConn:Disconnect()
+            return
+        end
+        
+        local move = moves[index]
+        local currentTime = tick() - startTime
+        
+        if currentTime >= (move.Time - moves[1].Time) then
+            if Character and Character:FindFirstChild("HumanoidRootPart") then
+                Character.HumanoidRootPart.CFrame = move.CFrame
+                Character.HumanoidRootPart.Velocity = move.Velocity or Vector3.new()
+                if move.Jump then
+                    Humanoid.Jump = true
+                end
+            end
+            index = index + 1
+        end
+    end)
+end
+
+-- Botões de Gravação
+CreateButton(MainFrame, "Iniciar Gravação", 240, StartRecording)
+CreateButton(MainFrame, "Parar Gravação", 300, StopRecording)
+
+-- Botão simples para reproduzir (melhorar com listagem depois)
+CreateButton(MainFrame, "Reproduzir Última (teste)", 360, function()
+    local files = listfiles(SaveFolder)
+    if #files > 0 then
+        local last = files[#files]
+        local name = last:match("([^\\]+)$")
+        PlayRecording(name)
+    else
+        print("Nenhuma gravação encontrada!")
+    end
+end)
+
+print("Script ST carregado completamente!")
